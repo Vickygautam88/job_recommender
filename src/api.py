@@ -288,7 +288,7 @@ def is_profile_completely_empty(user: dict):
 
     # Check if all required fields are None or empty
     return all(
-        user.get(f) in (None, "", [], {}) 
+        user.get(f) in (None,"None", "", [],'[]', {},"{}","null","Null",0,"0") 
         for f in fields
     )
 
