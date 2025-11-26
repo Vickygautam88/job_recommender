@@ -280,6 +280,18 @@ def clean_value(v):
         return v.encode("utf-8", "ignore").decode("utf-8", "ignore")
     return v
 
+# =========================================================
+#  check user_profile, user_skills, user_experince is not None
+# =========================================================
+def is_profile_completely_empty(user: dict):
+    fields = ["user_profile", "user_skills", "user_experience_ext"]
+
+    # Check if all required fields are None or empty
+    return all(
+        user.get(f) in (None, "", [], {}) 
+        for f in fields
+    )
+
 
 # ============================================================
 # 🎯 RECOMMEND ENDPOINT
@@ -290,7 +302,12 @@ def get_recommendations(user_id: int, top_k: int = 10):
     user = fetch_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-
+    # Check if all profile fields are empty
+    if is_profile_completely_empty(user):
+        raise HTTPException(
+            status_code=400,
+            detail="Your profile is incomplete. Please update user_profile, user_skills, and user_experience_ext."
+        )
     # Pass title embeddings (important for accuracy)
     recs = recommend_jobs_for_user(
         user,

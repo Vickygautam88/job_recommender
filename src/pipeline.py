@@ -269,8 +269,10 @@ def recommend_jobs_for_user(user_dict, index, job_ids, jobs_df, job_title_embs, 
     user_pref_locs = [norm(x) for x in str(user_dict.get("user_job_location") or "").split(",") if x.strip()]
     raw_title = norm(user_dict.get("user_profile"))
     user_title = raw_title
-    user_title_emb = embed_text_safe(user_title)
-
+    user_title_emb=""
+    if raw_title:
+       user_title_emb = embed_text_safe(user_title)
+    print(user_dict)
     q_emb = generate_user_embedding(user_dict).astype("float32")
     faiss_idxs, faiss_scores = search_index(index, q_emb, top_k=top_k + faiss_pool)
     faiss_idxs = faiss_idxs[:faiss_pool]

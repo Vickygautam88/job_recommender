@@ -105,7 +105,6 @@ def generate_job_embeddings(df_jobs):
     print(f"✅ Generated {len(embeddings)} embeddings for jobs.")
     return ids, np.array(embeddings, dtype="float32"), metadatas
 
-
 # =========================================================
 # 🧩 USER EMBEDDING GENERATION
 # =========================================================
@@ -119,7 +118,7 @@ def generate_user_embedding(user_dict):
     """
     text_parts = []
 
-    if is_valid_text(user_dict.get("user_profile")):
+    if is_valid_text(user_dict.get("user_profile","")):
         text_parts.append(f"Profile: {user_dict['user_profile']}")
     if is_valid_text(user_dict.get("user_skills")):
         text_parts.append(f"Skills: {user_dict['user_skills']}")
@@ -131,7 +130,7 @@ def generate_user_embedding(user_dict):
 
     # City/state are excluded here — they’ll be handled separately
     text = ". ".join(text_parts).strip()
-
+    
     if not text:
         raise ValueError("❌ User text empty or invalid for embedding generation.")
 
