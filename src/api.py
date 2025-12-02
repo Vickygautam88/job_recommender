@@ -226,6 +226,17 @@ def scheduled_job():
     incremental_main()
 
 
+#=============================================================
+#  DELETE JOB EMBEDDINGS
+#=============================================================
+
+from delete_em import delete_job_embeddings
+def delete_job():
+    status = delete_job_embeddings()
+    if status:
+        load_heavy_resources()
+
+
 # ============================================================
 # 🔌 LIFESPAN (startup + shutdown)
 # ============================================================
@@ -239,6 +250,7 @@ async def lifespan(app: FastAPI):
 
     scheduler = BackgroundScheduler()
     scheduler.add_job(scheduled_job, "interval", minutes=3)
+    scheduler.add_job(delete_job,"interval", minutes=3)
     scheduler.start()
     print("⏱ Scheduler started.")
 
@@ -354,6 +366,7 @@ def reload_resources():
     except Exception as e:
         print(f"❌ Reload failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__=="__main__":
     uvicorn.run("api:app",port=5003, reload=True)
