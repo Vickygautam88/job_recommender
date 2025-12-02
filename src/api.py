@@ -157,7 +157,7 @@ from datetime import datetime
 from fastapi import FastAPI, HTTPException
 import numpy as np
 import os
-
+import uvicorn
 from pipeline import recommend_jobs_for_user
 from database import fetch_user_by_id, fetch_all_jobs_from_db, load_jobs_from_csv
 from faiss_index import load_faiss_index
@@ -367,3 +367,6 @@ def reload_resources():
     except Exception as e:
         print(f"❌ Reload failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+if __name__=="___main__":
+    uvicorn.run("api:app",port=5003, reload=True)
