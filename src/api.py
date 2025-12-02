@@ -158,16 +158,16 @@ from fastapi import FastAPI, HTTPException
 import numpy as np
 import os
 import uvicorn
+import asyncio
 from pipeline import recommend_jobs_for_user
 from database import fetch_user_by_id, fetch_all_jobs_from_db, load_jobs_from_csv
 from faiss_index import load_faiss_index
 from incremental import incremental_main
+from contextlib import asynccontextmanager
 from apscheduler.schedulers.background import BackgroundScheduler
 
-app = FastAPI(title="Job Recommendation API", version="1.0")
-
 # ============================================================
-# 📂 PATHS (absolute-safe)
+# 📂 PATHS
 # ============================================================
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EMBED_DIR = os.path.join(BASE_DIR, "data", "embeddings")
@@ -177,7 +177,6 @@ IDS_PATH = os.path.join(EMBED_DIR, "job_ids.npy")
 META_PATH = os.path.join(EMBED_DIR, "job_metadatas.npy")
 TITLE_EMB_PATH = os.path.join(EMBED_DIR, "job_title_embs.npy")
 INDEX_PATH = os.path.join(EMBED_DIR, "faiss_index.bin")
-
 CSV_PATH = os.path.join(BASE_DIR, "data", "jobs_cleaned.csv")
 
 # GLOBALS
@@ -185,71 +184,25 @@ index = None
 job_ids = None
 job_title_embs = None
 jobs_df = None
+scheduler = None
 
 
 # ============================================================
-#          Task Scheduler
-# ===========================================================
-def scheduled_job():
-    print("Job running at:", datetime.now())
-    incremental_main()
-
-scheduler = BackgroundScheduler()
-# scheduler.add_job(scheduled_job, "interval", hours=12)  # runs every 12 hours
-scheduler.add_job(scheduled_job, "interval", minutes=3)   # ⬅ every 3 minutes
-scheduler.start()
-
-@app.on_event("shutdown")
-def shutdown_event():
-    scheduler.shutdown()
-
-
+# 🔄 HEAVY RESOURCE LOADING
 # ============================================================
-# 🔄 STARTUP LOADER
-# ============================================================
-@app.on_event("startup")
-def load_resources():
-    global index, job_ids, job_title_embs, jobs_df
-
-    print("🔄 Loading FAISS index and job dataset...")
-
-    required_files = [
-        INDEX_PATH, EMBEDDING_PATH, IDS_PATH,
-        META_PATH, TITLE_EMB_PATH
-    ]
-
-    if not all(os.path.exists(p) for p in required_files):
-            print("❌ Embeddings not found. "
-                 "Run pipeline.py first to generate FAISS + embeddings.") 
-            incremental_main()  
-            # raise RuntimeError(
-            #     "❌ Embeddings not found. "
-            #     "Run pipeline.py first to generate FAISS + embeddings."
-            # )
-    
-
-
-import asyncio
-
-@app.on_event("startup")
-async def load_resources():
-    loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, load_heavy_resources)
-
 def load_heavy_resources():
     global index, job_ids, job_title_embs, jobs_df
+
     print("🔄 Loading FAISS index and job dataset...")
 
-    required_files = [
+    req_files = [
         INDEX_PATH, EMBEDDING_PATH, IDS_PATH,
         META_PATH, TITLE_EMB_PATH
     ]
 
-    if not all(os.path.exists(p) for p in required_files):
-        print("❌ Embeddings not found. "
-                 "Run pipeline.py first to generate FAISS + embeddings.") 
-        # incremental_main()
-        raise RuntimeError("❌ Embeddings missing")
+    if not all(os.path.exists(p) for p in req_files):
+        print("❌ Embeddings not found → running incremental pipeline...")
+        incremental_main()
 
     index = load_faiss_index(INDEX_PATH)
     job_ids = np.load(IDS_PATH)
@@ -262,7 +215,41 @@ def load_heavy_resources():
         jobs_df = load_jobs_from_csv(CSV_PATH)
         print("⚠️ MySQL error → CSV fallback")
 
-    print("✅ API resources loaded successfully!")
+    print("✅ All resources loaded successfully!")
+
+
+# ============================================================
+# ⏱ SCHEDULER JOB
+# ============================================================
+def scheduled_job():
+    print("⏱ Running incremental update:", datetime.now())
+    incremental_main()
+
+
+# ============================================================
+# 🔌 LIFESPAN (startup + shutdown)
+# ============================================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global scheduler
+
+    # --- Startup ---
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, load_heavy_resources)
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(scheduled_job, "interval", minutes=3)
+    scheduler.start()
+    print("⏱ Scheduler started.")
+
+    yield  # Application runs here
+
+    # --- Shutdown ---
+    scheduler.shutdown()
+    print("🛑 Scheduler stopped.")
+
+
+app = FastAPI(lifespan=lifespan, title="Job Recommendation API", version="1.0")
 
 # ============================================================
 # 🔧 CLEAN JSON VALUES
@@ -368,5 +355,5 @@ def reload_resources():
         print(f"❌ Reload failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__=="___main__":
+if __name__=="__main__":
     uvicorn.run("api:app",port=5003, reload=True)
