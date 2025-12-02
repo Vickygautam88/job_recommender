@@ -249,8 +249,8 @@ async def lifespan(app: FastAPI):
     await loop.run_in_executor(None, load_heavy_resources)
 
     scheduler = BackgroundScheduler()
-    scheduler.add_job(scheduled_job, "interval", minutes=3)
-    scheduler.add_job(delete_job,"interval", minutes=3)
+    scheduler.add_job(scheduled_job, "interval", hours=3)
+    scheduler.add_job(delete_job,"interval", hours=3)
     scheduler.start()
     print("⏱ Scheduler started.")
 
@@ -327,6 +327,7 @@ def get_recommendations(user_id: int, top_k: int = 10):
 
     return {
         "user_id": user_id,
+        "status":True,
         "user_name": user.get("user_name"),
         "results": clean_results
     }
@@ -335,7 +336,7 @@ def get_recommendations(user_id: int, top_k: int = 10):
 def get_recommendations():
 
     return {
-       "msg":"API is working!"
+       "msg":"API is working!","status":True
     }
 
 # ============================================================
@@ -361,11 +362,11 @@ def reload_resources():
             jobs_df = load_jobs_from_csv(CSV_PATH)
 
         print("✅ API resources refreshed successfully.")
-        return {"status": "success", "message": "Resources reloaded"}
+        return {"status": True, "message": "Resources reloaded"}
 
     except Exception as e:
         print(f"❌ Reload failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status=False ,status_code=500, detail=str(e))
 
 
 if __name__=="__main__":

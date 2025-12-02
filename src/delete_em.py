@@ -23,7 +23,7 @@ def delete_job_embeddings():
     result = db.execute(text("""SELECT job_id
             FROM remarkhr.jobs
             WHERE job_status = 0
-            AND job_updated_on >= NOW() - INTERVAL 12 HOUR;"""))
+            AND job_updated_on >= NOW() - INTERVAL 48 HOUR;"""))
     rows = result.fetchall()
     db.close()
 
