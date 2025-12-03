@@ -152,7 +152,7 @@ def fetch_user_by_id(user_id: int):
         row = result.fetchone()
 
         if not row:
-            return None
+            return False
 
         # SQLAlchemy row → convert to dict
         return dict(row._mapping)

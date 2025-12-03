@@ -300,13 +300,12 @@ def get_recommendations(user_id: int, top_k: int = 10):
 
     user = fetch_user_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found",status=False)
+        raise HTTPException(status_code=404, detail="User not found")
     # Check if all profile fields are empty
     if is_profile_completely_empty(user):
         raise HTTPException(
             status_code=400,
             detail="Your profile is incomplete. Please update user_profile, user_skills, and user_experience_ext.",
-            status=False
         )
     # Pass title embeddings (important for accuracy)
     recs = recommend_jobs_for_user(
@@ -327,7 +326,6 @@ def get_recommendations(user_id: int, top_k: int = 10):
 
     return {
         "user_id": user_id,
-        "status":True,
         "user_name": user.get("user_name"),
         "results": clean_results
     }
@@ -336,7 +334,7 @@ def get_recommendations(user_id: int, top_k: int = 10):
 def get_recommendations():
 
     return {
-       "msg":"API is working!","status":True
+       "msg":"API is working!"
     }
 
 # ============================================================
@@ -362,11 +360,11 @@ def reload_resources():
             jobs_df = load_jobs_from_csv(CSV_PATH)
 
         print("✅ API resources refreshed successfully.")
-        return {"status": True, "message": "Resources reloaded"}
+        return { "message": "Resources reloaded"}
 
     except Exception as e:
         print(f"❌ Reload failed: {e}")
-        raise HTTPException(status=False ,status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__=="__main__":
